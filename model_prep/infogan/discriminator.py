@@ -29,10 +29,11 @@ class Discriminator:
                            name="discriminator_input")
 
         # Mnist
-        # list_f = [128]
-
+        # filters = [128]
+        # stride = (2,2)
         # For other datasets
-        list_f = [64, 128, 256]
+        filters = [64, 128, 256, 128]
+        strides = [2, 2, 1, 1]
 
         # First conv
         x = Conv2D(64, (3, 3), strides=(2, 2), name="disc_Conv2D_1",
@@ -40,9 +41,11 @@ class Discriminator:
         x = LeakyReLU(0.2)(x)
 
         # Next convs
-        for i, f in enumerate(list_f):
+        for i, f in enumerate(filters):
             name = "disc_Conv2D_%s" % (i + 2)
-            x = Conv2D(f, (3, 3), strides=(2, 2), name=name, padding="same")(x)
+            x = Conv2D(f, (3, 3),
+                       strides=(strides[i], strides[i]),
+                       name=name, padding="same")(x)
             x = BatchNormalization(axis=-1)(x)
             x = LeakyReLU(0.2)(x)
 

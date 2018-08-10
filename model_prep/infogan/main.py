@@ -10,7 +10,7 @@ from model_prep.infogan.training import Trainer
 
 
 def train(imgs_dir, img_size, img_ch, batch_size, generator, discriminator,
-          save_dir, epochs):
+          save_dir, epochs, label_flipping=0, label_smoothing=False):
     x_train, x_test = Dataset(img_dir=imgs_dir,
                               fraction_test_set=0,
                               load_resolution=(img_size, img_size, img_ch),
@@ -30,8 +30,12 @@ def train(imgs_dir, img_size, img_ch, batch_size, generator, discriminator,
     generator.model.summary()
     discriminator.model.summary()
 
-    trainer = Trainer(generator, discriminator, save_dir)
-    trainer.fit(x_train, num_epochs=1000, batch_size=batch_size)
+    trainer = Trainer(generator, discriminator, save_dir,
+                      num_epochs=epochs,
+                      batch_size=batch_size,
+                      label_flipping=label_flipping,
+                      label_smoothing=label_smoothing)
+    trainer.fit(x_train)
 
 
 if __name__ == "__main__":
@@ -54,12 +58,21 @@ if __name__ == "__main__":
                         help="Latent continuous dimensions")
     parser.add_argument('--cat_dim', default=10, type=int,
                         help="Latent categorical dimension")
-    parser.add_argument("-b", "--batch_size", type=int, default=128,
-                        help="Path to images")
     parser.add_argument('--noise_dim', default=64, type=int,
                         help="noise dimension")
+    parser.add_argument('--use_mbd', default=False, action="store_true",
+                        help="Use MiniBatch discrimination in the GAN training")
+
+    # Training Parameter
+    parser.add_argument("-b", "--batch_size", type=int, default=128,
+                        help="Path to images")
     parser.add_argument('--epochs', default=1000, type=int,
                         help="How many times to go over the dataset")
+    parser.add_argument('--label_flipping', default=0, type=float,
+                        help="The percentage chance of a batches labels"
+                             "being flipped")
+    parser.add_argument('--label_smoothing', default=False, action='store_true',
+                        help="Whether or not to smooth 'real' labels")
     args = parser.parse_args()
 
     img_ch = 1 if args.black_and_white else 3
@@ -81,7 +94,7 @@ if __name__ == "__main__":
             img_ch=img_ch,
             cat_dim=args.cat_dim,
             cont_dim=args.cont_dim,
-            use_mbd=True)
+            use_mbd=args.use_minibatch)
     else:
         discriminator = Discriminator.from_path(args.discriminator)
 
@@ -92,4 +105,6 @@ if __name__ == "__main__":
           generator=generator,
           discriminator=discriminator,
           save_dir=args.save_dir,
-          epochs=args.epochs)
+          epochs=args.epochs,
+          label_flipping=args.label_flipping,
+          label_smoothing=args.label_smoothing)
