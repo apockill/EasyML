@@ -147,12 +147,12 @@ class Trainer:
                 self._write_summary(*zip(*logs), self.curr_batch)
             self.curr_batch += 1
 
-    def _save_progress(self):
+    def save_progress(self, gen_name="generator", disc_name="discriminator"):
         """Save the progress of the generator and discriminator"""
         print("\nSaving progress to", str(self.save_dir))
-        self.generator.model.save(self.save_dir / "generator.h5",
+        self.generator.model.save(self.save_dir / (gen_name + ".h5"),
                                   include_optimizer=False)
-        self.discriminator.model.save(self.save_dir / "discriminator.h5",
+        self.discriminator.model.save(self.save_dir / (disc_name + ".h5"),
                                       include_optimizer=False)
 
     def _write_summary(self, names, logs, batch_no):
@@ -184,26 +184,23 @@ class Trainer:
 
                 # Save every so often
                 if self.curr_epoch % 15 == 0:
-                    self._save_progress()
+                    self.save_progress()
 
-                # Save screenshots
-                if self.curr_epoch % 1 == 0:
-                    # Produce an output
-                    fake_img = self.generator.model.predict(
-                        [sample_cat(1, self.generator.cat_dim),
-                         sample_noise(self.noise_scale, 1,
-                                      self.generator.cont_dim),
-                         sample_noise(self.noise_scale, 1,
-                                      self.generator.noise_dim)],
-                        batch_size=self.batch_size)[0]
-                    fake_img += 1
-                    fake_img /= 2
-                    fake_img *= 255
-                    fake_img = fake_img.astype(np.uint8)
-                    img_path = self.save_dir / (str(int(time())) + ".png")
-                    cv2.imwrite(str(img_path), fake_img)
+                # Save an image every epoch
+                fake_img = self.generator.model.predict(
+                    [sample_cat(1, self.generator.cat_dim),
+                     sample_noise(self.noise_scale, 1,
+                                  self.generator.cont_dim),
+                     sample_noise(self.noise_scale, 1,
+                                  self.generator.noise_dim)],
+                    batch_size=self.batch_size)[0]
+                fake_img = (fake_img + 1) * 127.5
+                fake_img = fake_img.astype(np.uint8)
+                img_path = self.save_dir / (str(int(time())) + ".png")
+                cv2.imwrite(str(img_path), fake_img)
+
             except KeyboardInterrupt:
-                self._save_progress()
+                self.save_progress()
                 exit(0)
 
 

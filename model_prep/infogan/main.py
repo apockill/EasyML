@@ -21,7 +21,6 @@ def train(imgs_dir, img_size, img_ch, batch_size, generator, discriminator,
 
     if img_ch == 1:
         x_train = np.expand_dims(x_train, axis=3)
-        x_test = np.expand_dims(x_test, axis=3)
 
     # x_train = load_mnist("channels_last")
 
@@ -50,7 +49,7 @@ if __name__ == "__main__":
                         help="Where to save models during training")
     parser.add_argument('--max_img_size', default=68, type=int,
                         help="Image width == height (only specify for CelebA)")
-    parser.add_argument('--black-and-white', action="store_true",
+    parser.add_argument('--black_and_white', action="store_true",
                         help="If this flag is not set, use color")
 
     # Model parameters
@@ -64,6 +63,8 @@ if __name__ == "__main__":
                         help="Use MiniBatch discrimination in the GAN training")
 
     # Training Parameter
+    parser.add_argument('--use_progan', default=False, action="store_true",
+                        help="Use progressive training")
     parser.add_argument("-b", "--batch_size", type=int, default=128,
                         help="Path to images")
     parser.add_argument('--epochs', default=1000, type=int,
@@ -78,6 +79,7 @@ if __name__ == "__main__":
     img_ch = 1 if args.black_and_white else 3
 
     if args.generator is None:
+        start_size = 4 if args.use_progan else args.max_img_size
         generator = GeneratorDeconv.from_scratch(
             img_size=args.max_img_size,
             img_ch=img_ch,
@@ -89,12 +91,13 @@ if __name__ == "__main__":
         generator = GeneratorDeconv.from_path(args.generator)
 
     if args.discriminator is None:
+        start_size = 4 if args.use_progan else args.max_img_size
         discriminator = Discriminator.from_scratch(
             img_size=args.max_img_size,
             img_ch=img_ch,
             cat_dim=args.cat_dim,
             cont_dim=args.cont_dim,
-            use_mbd=args.use_minibatch)
+            use_mbd=args.use_mbd)
     else:
         discriminator = Discriminator.from_path(args.discriminator)
 
