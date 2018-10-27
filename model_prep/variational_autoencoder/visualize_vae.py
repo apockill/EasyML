@@ -45,6 +45,6 @@ if __name__ == "__main__":
     for path in Path(path).resolve().glob("Decoder_*ld_2*.h5"):
         pic_path = path.parent / path.name.replace(".h5", ".png")
 
-        if True or not pic_path.exists():
+        if not pic_path.exists():
             model = keras.models.load_model(str(path))
             visualize_grid(model, (32, 32, 3), save_to=str(pic_path))

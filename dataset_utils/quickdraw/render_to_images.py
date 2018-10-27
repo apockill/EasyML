@@ -27,7 +27,7 @@ def worker_thread(work_queue: Queue, save_img_dir: str, img_format: str):
         work_queue.task_done()
 
 
-def main(cache_dir, save_img_dir, img_format, num_workers):
+def main(cache_dir, save_img_dir, img_format, num_workers, categories):
     work = Queue()
     # Start worker threads
     for _ in range(num_workers):
@@ -37,8 +37,7 @@ def main(cache_dir, save_img_dir, img_format, num_workers):
         w.start()
 
     # Start feeding in work
-    names = QuickDrawData().drawing_names
-    for name in names:
+    for name in categories:
         group = QuickDrawDataGroup(name=name,
                                    recognized=True,
                                    cache_dir=cache_dir,
@@ -62,10 +61,13 @@ if __name__ == "__main__":
                         help="Image format: .jpg or .png or .gif")
     parser.add_argument("--num_workers", type=int, default=24,
                         help="Number of worker threads")
+    parser.add_argument("--categories", type=str, nargs="+", required=True,
+                        help="List of categories to render")
     args = parser.parse_args()
 
     main(cache_dir=args.cache_dir,
          save_img_dir=args.save_img_dir,
          img_format=args.image_format,
-         num_workers=args.num_workers)
+         num_workers=args.num_workers,
+         categories=args.categories)
 
