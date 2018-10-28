@@ -10,7 +10,7 @@ from keras.optimizers import Adam
 from keras.utils import generic_utils
 from keras.callbacks import TensorBoard
 
-from easy_inference.train_utils.batching import batch_iterator
+from easy_ml.train_utils.batching import batch_iterator
 from infogan.batch_utils import sample_noise, sample_cat, get_gen_batch, \
     get_real_disc_batch, get_fake_disc_batch
 

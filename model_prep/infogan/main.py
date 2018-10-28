@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 
 import numpy as np
 
-from easy_inference.train_utils.image_dataset import Dataset
+from easy_ml.train_utils.image_dataset import Dataset
 
 from model_prep.infogan.generator import GeneratorDeconv
 from model_prep.infogan.discriminator import Discriminator
