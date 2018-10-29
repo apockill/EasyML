@@ -12,6 +12,7 @@ class CustomVariationalLossLayer(Layer):
     This is specifically for calculating the loss for a variational autoencoder. No operations happen here that change
     the inputs or outputs.
     """
+
     def __init__(self, img_width, img_height, **kwargs):
         self.is_placeholder = True
         super(CustomVariationalLossLayer, self).__init__(**kwargs)
@@ -22,8 +23,10 @@ class CustomVariationalLossLayer(Layer):
         x = kb.flatten(x)
         x_decoded_mean_squash = kb.flatten(x_decoded_mean_squash)
 
-        xent_loss = self.height * self.width * metrics.binary_crossentropy(x, x_decoded_mean_squash)
-        kl_loss = - 0.5 * kb.mean(1 + z_log_var - kb.square(z_mean) - kb.exp(z_log_var), axis=-1)
+        xent_loss = self.height * self.width * metrics.binary_crossentropy(x,
+                                                                           x_decoded_mean_squash)
+        kl_loss = - 0.5 * kb.mean(
+            1 + z_log_var - kb.square(z_mean) - kb.exp(z_log_var), axis=-1)
         return kb.mean(xent_loss + kl_loss)
 
     def call(self, inputs):
@@ -51,14 +54,14 @@ class VariationalAutoencoder:
         self.num_conv = 3
         self.batch_size = 500
 
-
     def train(self, x_train, x_test):
         """ Trains an autoencoder on the dataset and returns a trained encoder and decoder"""
         # Build the model equation
         x = Input(shape=(self.height, self.width, self.channels))
         encoded, z_mean, z_log_var = self.encoder(x)
         decoded = self.decoder(encoded, build_ops=True)
-        y = CustomVariationalLossLayer(self.width, self.height)([x, decoded, z_mean, z_log_var])
+        y = CustomVariationalLossLayer(self.width, self.height)(
+            [x, decoded, z_mean, z_log_var])
 
         # Initialize the Keras model
         vae = Model(x, y)
@@ -67,7 +70,8 @@ class VariationalAutoencoder:
 
         # Prepare the dataset
         x_train = x_train.astype('float32') / 255.
-        x_train = x_train.reshape((x_train.shape[0],) + (self.height, self.width, self.channels))
+        x_train = x_train.reshape(
+            (x_train.shape[0],) + (self.height, self.width, self.channels))
         x_test = x_test.astype('float32') / 255.
 
         # Train
@@ -83,7 +87,7 @@ class VariationalAutoencoder:
         encoder = Model(x, z_mean)
 
         # Create the decoder that was learned
-        decoder_input = Input(shape=(self.latent_dim, ))
+        decoder_input = Input(shape=(self.latent_dim,))
         decoded = self.decoder(decoder_input, build_ops=False)
         decoder = Model(decoder_input, decoded)
 
@@ -116,7 +120,8 @@ class VariationalAutoencoder:
         z_mean = Dense(self.latent_dim)(hidden)
         z_log_var = Dense(self.latent_dim)(hidden)
 
-        z = Lambda(self._sampling, output_shape=(self.latent_dim,))([z_mean, z_log_var])
+        z = Lambda(self._sampling, output_shape=(self.latent_dim,))(
+            [z_mean, z_log_var])
         return z, z_mean, z_log_var
 
     def decoder(self, z, build_ops=True):
@@ -129,30 +134,34 @@ class VariationalAutoencoder:
         if build_ops:
             # Decoder architecture
             self.decoder_hid = Dense(self.intermediate_dim, activation='relu')
-            self.decoder_upsample = Dense(self.filters * int(self.height / 2 * self.width / 2), activation='relu')
+            self.decoder_upsample = Dense(
+                self.filters * int(self.height / 2 * self.width / 2),
+                activation='relu')
 
-            self.output_shape = (self.batch_size, int(self.height / 2), int(self.width / 2), self.filters)
+            self.output_shape = (
+            self.batch_size, int(self.height / 2), int(self.width / 2),
+            self.filters)
 
             self.decoder_reshape = Reshape(self.output_shape[1:])
             self.decoder_deconv_1 = Conv2DTranspose(self.filters,
-                                               kernel_size=self.num_conv,
-                                               padding='same',
-                                               strides=1,
-                                               activation='relu')
+                                                    kernel_size=self.num_conv,
+                                                    padding='same',
+                                                    strides=1,
+                                                    activation='relu')
             self.decoder_deconv_2 = Conv2DTranspose(self.filters,
-                                               kernel_size=self.num_conv,
-                                               padding='same',
-                                               strides=1,
-                                               activation='relu')
+                                                    kernel_size=self.num_conv,
+                                                    padding='same',
+                                                    strides=1,
+                                                    activation='relu')
             self.decoder_deconv_3_upsamp = Conv2DTranspose(self.filters,
-                                                      kernel_size=(3, 3),
-                                                      strides=(2, 2),
-                                                      padding='valid',
-                                                      activation='relu')
+                                                           kernel_size=(3, 3),
+                                                           strides=(2, 2),
+                                                           padding='valid',
+                                                           activation='relu')
             self.decoder_mean_squash = Conv2D(self.channels,
-                                         kernel_size=2,
-                                         padding='valid',
-                                         activation='sigmoid')
+                                              kernel_size=2,
+                                              padding='valid',
+                                              activation='sigmoid')
 
         hid_decoded = self.decoder_hid(z)
         up_decoded = self.decoder_upsample(hid_decoded)

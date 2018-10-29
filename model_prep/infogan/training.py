@@ -115,7 +115,8 @@ class Trainer:
 
             # Train the discriminator on real and fake images
             disc_loss = self.discriminator.model.train_on_batch(
-                next_batch, [y_disc, y_cat, y_cont])
+                x=next_batch,
+                y=[y_disc, y_cat, y_cont])
 
             # Create a batch to feed the generator model
             x_gen, y_gen, y_cat, y_cont, y_cont_target = get_gen_batch(

@@ -12,13 +12,15 @@ import numpy as np
 class Dataset:
     def __init__(self, img_dir, fraction_test_set, val_range=(0, 255),
                  dtype=np.uint8, load_resolution=None, max_size=None,
-                 shuffle=False):
+                 shuffle=False, processing_hook=None):
         """
         :param img_dir: A directory full of *.png images
         :param fraction_test_set: 0-1, the fraction of images to be put in the
         test set
         :param load_resolution: (width, height, ch) to load the images at.
         If None, it will use the original size
+        :param processing_hook: This is a function that runs after loading,
+        resizing, and color-converting an image.
         """
         assert 0 <= fraction_test_set < 1, \
             "The fraction test set must be between 0 and 1!"
@@ -29,7 +31,7 @@ class Dataset:
         self.val_range = val_range
         self.img_paths = list(Path(self.img_dir).glob("*.png")) + \
                          list(Path(self.img_dir).glob("*.jpg"))
-
+        self.processing_hook=processing_hook
         if shuffle:
             random.shuffle(self.img_paths)
         if max_size is not None:
@@ -90,6 +92,7 @@ class Dataset:
         # Get results
         while not img_queue.empty():
             img = img_queue.get()
+
             if len(x_test) < num_test:
                 x_test.append(img)
             else:
@@ -108,9 +111,16 @@ class Dataset:
         # Adjust the channel shape
         if img.shape[2] != self.channels:
             if img.shape[2] == 3:
+                # Convert the image to gray, but increase dimensionality to
+                # match the dimensions of a color image
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                img = np.expand_dims(img, axis=-1)
             elif img.shape[2] == 1:
                 img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+        # Run any custom image processing
+        if self.processing_hook is not None:
+            img = self.processing_hook(img)
 
         # Adjust the image to be between two specific values
         img = img.astype(dtype=np.float32)  # Temporarily turn to float
@@ -121,6 +131,7 @@ class Dataset:
 
         # Adjust the images type
         img = img.astype(self.dtype)
+
         return img
 
     def _worker(self, work_queue, img_queue):
