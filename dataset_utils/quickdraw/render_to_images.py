@@ -27,7 +27,8 @@ def worker_thread(work_queue: Queue, save_img_dir: str, img_format: str):
         work_queue.task_done()
 
 
-def main(cache_dir, save_img_dir, img_format, num_workers, categories):
+def main(cache_dir, save_img_dir, img_format, num_workers, categories,
+         drawing_recognized):
     work = Queue()
     # Start worker threads
     for _ in range(num_workers):
@@ -39,7 +40,7 @@ def main(cache_dir, save_img_dir, img_format, num_workers, categories):
     # Start feeding in work
     for name in categories:
         group = QuickDrawDataGroup(name=name,
-                                   recognized=True,
+                                   recognized=drawing_recognized,
                                    cache_dir=cache_dir,
                                    max_drawings=float('inf'))
         for i, drawing in enumerate(group.drawings):
@@ -63,11 +64,14 @@ if __name__ == "__main__":
                         help="Number of worker threads")
     parser.add_argument("--categories", type=str, nargs="+", required=True,
                         help="List of categories to render")
+    parser.add_argument("--recognized", type=str, nargs="+", default=None,
+                        help="Render only recognized or unrecognized drawings.")
     args = parser.parse_args()
 
     main(cache_dir=args.cache_dir,
          save_img_dir=args.save_img_dir,
          img_format=args.image_format,
          num_workers=args.num_workers,
-         categories=args.categories)
+         categories=args.categories,
+         drawing_recognized=args.recognized)
 
