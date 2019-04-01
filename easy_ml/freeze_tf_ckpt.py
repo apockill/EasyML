@@ -52,7 +52,7 @@ def freeze_graph(model_path, output_node_names):
 
         # Print information about the loaded model
         ops = [o.name for o in tf.get_default_graph().get_operations()]
-        # print("All Operations: \n", ops)
+        print("All Operations: \n", ops)
 
 
         # We restore the weights
