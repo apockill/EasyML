@@ -21,7 +21,7 @@ def iter_data(labels_file: Path, data_dirs, detector: ObjectDetector):
         people = [o for o in objects if o.name == "person"]
 
         if len(people) == 0:
-            print("No people found")
+            print("Skipped: No people found")
             return None
 
         face_rect = [x, y, x + w, x + h]
@@ -32,7 +32,7 @@ def iter_data(labels_file: Path, data_dirs, detector: ObjectDetector):
         rect = best_fit.rect
         final_iou = bb_intersection_over_union(face_rect, rect)
         if final_iou < 0.1:
-            print("Not high enough IOU")
+            print("Skipped: Not high enough IOU")
             return None
 
         cropped = img[rect[1]:rect[3], rect[0]:rect[2]]
