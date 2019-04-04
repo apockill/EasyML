@@ -9,34 +9,34 @@ from easy_inference.models.object_detection import ObjectDetector
 from easy_inference.bbox_utils import bb_intersection_over_union
 
 
-def iter_data(labels_file: Path, data_dirs, detector: ObjectDetector):
+def read_infer_and_crop(path, face_rect, detector: ObjectDetector):
+    """Reads and crops the image, returns numpy array"""
+    img = cv2.imread(str(path))
+    objects = detector.predict([img])[0]
+    people = [o for o in objects if o.name == "person"]
+
+    if len(people) == 0:
+        print("Skipped: No people found")
+        return None
+
+    people.sort(reverse=True,
+                key=lambda o: bb_intersection_over_union(face_rect, o.rect))
+
+    best_fit = people[0]
+    rect = best_fit.rect
+    final_iou = bb_intersection_over_union(face_rect, rect)
+    if final_iou < 0.1:
+        print("Skipped: Not high enough IOU")
+        return None
+
+    cropped = img[rect[1]:rect[3], rect[0]:rect[2]]
+    return cropped
+
+
+def iter_data(labels_file: Path, data_dirs):
     """Iterate over the crop of every identity in the dataset"""
     with open(labels_file, "r") as labels_file:
         lines = labels_file.readlines()
-
-    def read_infer_and_crop(path, x, y, w, h):
-        """Reads and crops the image, returns numpy array"""
-        img = cv2.imread(str(path))
-        objects = detector.predict([img])[0]
-        people = [o for o in objects if o.name == "person"]
-
-        if len(people) == 0:
-            print("Skipped: No people found")
-            return None
-
-        face_rect = [x, y, x + w, x + h]
-        people.sort(reverse=True,
-                    key=lambda o: bb_intersection_over_union(face_rect, o.rect))
-
-        best_fit = people[0]
-        rect = best_fit.rect
-        final_iou = bb_intersection_over_union(face_rect, rect)
-        if final_iou < 0.1:
-            print("Skipped: Not high enough IOU")
-            return None
-
-        cropped = img[rect[1]:rect[3], rect[0]:rect[2]]
-        return cropped
 
     for line in lines:
         line = line.split()
@@ -48,8 +48,8 @@ def iter_data(labels_file: Path, data_dirs, detector: ObjectDetector):
         for data_dir in data_dirs:
             img_path = data_dir / file_name
             if img_path.is_file():
-                cropped = read_infer_and_crop(img_path, x, y, w, h)
-                yield cropped, identity_id, file_name, data_dir
+                face_rect = [x, y, x + w, x + h]
+                yield img_path, face_rect, identity_id, file_name, data_dir
                 break
         else:
             raise FileNotFoundError("Could not find image in either train or" +
@@ -60,24 +60,28 @@ def sort_imgs(data_dirs: List[Path], labels_file: Path,
               out_dir: Path, detector: ObjectDetector):
     data_iterator = iter_data(
         labels_file=labels_file,
-        data_dirs=data_dirs,
-        detector=detector)
+        data_dirs=data_dirs)
 
     # Read, crop, and save all of the images
-    for cropped_img, identity_id, file_name, data_dir in data_iterator:
-        print("Saving person", identity_id)
-        if cropped_img is None:
-            # Person detector didn't find the person
-            continue
+    for img_path, face_rect, identity_id, file_name, data_dir in data_iterator:
 
         # Get/Make the save directory
         person_dir = out_dir / data_dir.name / str(identity_id)
         person_dir.mkdir(parents=True, exist_ok=True)
         save_path = person_dir / file_name
-        assert not save_path.exists()
 
+        if save_path.exists():
+            print(f"Skipping {file_name}:already exists")
+            continue
+
+        cropped = read_infer_and_crop(img_path, face_rect, detector)
+        if cropped is None:
+            # Person detector didn't find the person
+            continue
+
+        print("Saving person", identity_id)
         # Save the image
-        cv2.imwrite(str(save_path), cropped_img)
+        cv2.imwrite(str(save_path), cropped)
 
 
 def main():
