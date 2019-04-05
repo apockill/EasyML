@@ -13,14 +13,20 @@ def read_infer_and_crop(path, face_rect, detector: ObjectDetector):
     """Reads and crops the image, returns numpy array"""
     img = cv2.imread(str(path))
     objects = detector.predict([img])[0]
-    people = [o for o in objects if o.name == "person"]
+    people = [o for o in objects
+              if o.name == "person"
+              and o.area > 0]
 
     if len(people) == 0:
         print("Skipped: No people found")
         return None
 
-    people.sort(reverse=True,
-                key=lambda o: bb_intersection_over_union(face_rect, o.rect))
+    try:
+        people.sort(reverse=True,
+                    key=lambda o: bb_intersection_over_union(face_rect, o.rect))
+    except ZeroDivisionError:
+        print("Skipped: ZeroDivisionError")
+        return None
 
     best_fit = people[0]
     rect = best_fit.rect
