@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from pathlib import Path
-import shutil
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 import cv2
@@ -9,8 +9,10 @@ from easy_inference.models.object_detection import ObjectDetector
 from easy_inference.bbox_utils import bb_intersection_over_union
 
 
-def read_infer_and_crop(path, face_rect, detector: ObjectDetector):
-    """Reads and crops the image, returns numpy array"""
+def read_infer_and_crop(path, face_rect, detector: ObjectDetector, margin=15):
+    """Reads and crops the image, returns numpy array
+
+    :poaram margin: Within how many pixels the face must be near the person"""
     img = cv2.imread(str(path))
     objects = detector.predict([img])[0]
     people = [o for o in objects
@@ -21,17 +23,30 @@ def read_infer_and_crop(path, face_rect, detector: ObjectDetector):
         print("Skipped: No people found")
         return None
 
+    # Find all people that have the face inside of them
+    people_with_face = []
+    for person in people:
+        rect = person.rect
+        if (rect[0] - margin <= face_rect[0] < face_rect[2] <= rect[2] + margin
+                and rect[1] - margin <= face_rect[1] < face_rect[3] <= rect[3] + margin):
+            people_with_face.append(person)
+
+    if len(people_with_face) == 0:
+        print("Skipped: No faces within person")
+        return None
+
     try:
-        people.sort(reverse=True,
-                    key=lambda o: bb_intersection_over_union(face_rect, o.rect))
+        people_with_face.sort(reverse=True,
+                              key=lambda o: bb_intersection_over_union(
+                                  face_rect, o.rect))
     except ZeroDivisionError:
         print("Skipped: ZeroDivisionError")
         return None
 
-    best_fit = people[0]
+    best_fit = people_with_face[0]
     rect = best_fit.rect
     final_iou = bb_intersection_over_union(face_rect, rect)
-    if final_iou < 0.1:
+    if final_iou < 0.05:
         print("Skipped: Not high enough IOU")
         return None
 
@@ -54,7 +69,7 @@ def iter_data(labels_file: Path, data_dirs):
         for data_dir in data_dirs:
             img_path = data_dir / file_name
             if img_path.is_file():
-                face_rect = [x, y, x + w, x + h]
+                face_rect = [x, y, x + w, y + h]
                 yield img_path, face_rect, identity_id, file_name, data_dir
                 break
         else:
