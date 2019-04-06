@@ -10,6 +10,7 @@ setup(
     description='This is a helper library with various tools and utils for '
                 'training, creating, and preparing models.',
     packages=['easy_ml'],
-    install_requires=["tensorflow-gpu"],
+    install_requires=["tensorflow-gpu",
+                      "opencv-python"],
     zip_safe=False
 )
